@@ -1,6 +1,23 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:pochi/pages/home_screen.dart';
+import 'package:pochi/pages/signin_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-void main() {
+late final List<CameraDescription> cameras;
+final supabase = Supabase.instance.client;
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Supabase.initialize(
+    url: 'https://xroalasoafrhvcphegmi.supabase.co',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhyb2FsYXNvYWZyaHZjcGhlZ21pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI1MTI2MDYsImV4cCI6MjA0ODA4ODYwNn0.xcSBzrnFpiU6UoL_lTk_4pYiLrrzAcDQWRedLoY1NO0',
+  );
+
+  cameras = await availableCameras();
+
   runApp(const MainApp());
 }
 
@@ -9,64 +26,11 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'POCHI',
-      home: HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  var _currentIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(),
-      body: [
-        Center(
-          child: Text('Home'),
-        ),
-        Center(
-          child: Text('Album'),
-        )
-      ][_currentIndex],
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            DrawerHeader(
-              child: Text('drawer'),
-            ),
-            ListTile(
-              title: Text('Home'),
-              leading: Icon(Icons.home),
-              onTap: () {
-                setState(() {
-                  _currentIndex = 0;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: Text('Album'),
-              leading: Icon(Icons.photo_album),
-              onTap: () {
-                setState(() {
-                  _currentIndex = 1;
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
+      home: supabase.auth.currentSession != null
+          ? const HomeScreen()
+          : const SignInScreen(),
     );
   }
 }
