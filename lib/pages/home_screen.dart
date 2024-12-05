@@ -16,6 +16,25 @@ class _HomeScreenState extends State<HomeScreen> {
   var _currentIndex = 0;
   late final StreamSubscription _subscription;
 
+  Future<List<String>> _fetchImages() async {
+    final objects = await supabase.storage
+        .from('images')
+        .list(path: '${supabase.auth.currentUser!.id}/');
+    final signedUrls = await Future.wait(
+      objects.map(
+        (object) {
+          final signedUrl = supabase.storage.from('images').createSignedUrl(
+                '${supabase.auth.currentUser!.id}/${object.name}',
+                60 * 60 * 24,
+              );
+          return signedUrl;
+        },
+      ),
+    );
+
+    return signedUrls;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: Text(['Home', 'Album'][_currentIndex]),
         actions: [
           IconButton(
             onPressed: () async {
@@ -56,9 +76,27 @@ class _HomeScreenState extends State<HomeScreen> {
         Center(
           child: Text('Home'),
         ),
-        Center(
-          child: Text('Album'),
-        )
+        FutureBuilder(
+          future: _fetchImages(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.done) {
+              if (snapshot.hasData) {
+                final urls = snapshot.data!;
+                return ListView.builder(
+                  itemCount: urls.length,
+                  itemBuilder: (context, index) {
+                    return Card(
+                      child: Image.network(urls[index]),
+                    );
+                  },
+                );
+              } else if (snapshot.hasError) {
+                return Text(snapshot.error.toString());
+              }
+            }
+            return const CircularProgressIndicator();
+          },
+        ),
       ][_currentIndex],
       drawer: Drawer(
         child: ListView(
