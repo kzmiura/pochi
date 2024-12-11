@@ -82,13 +82,16 @@ class _HomeScreenState extends State<HomeScreen> {
             if (snapshot.connectionState == ConnectionState.done) {
               if (snapshot.hasData) {
                 final urls = snapshot.data!;
-                return ListView.builder(
+                return GridView.builder(
                   itemCount: urls.length,
                   itemBuilder: (context, index) {
                     return Card(
                       child: Image.network(urls[index]),
                     );
                   },
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                  ),
                 );
               } else if (snapshot.hasError) {
                 return Text(snapshot.error.toString());
@@ -105,8 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(supabase.auth.currentUser!.email ?? 'No email'),
             ),
             ListTile(
-              title: Text('Home'),
-              leading: Icon(Icons.home),
+              title: const Text('Home'),
+              leading: const Icon(Icons.home),
               onTap: () {
                 setState(() {
                   _currentIndex = 0;
@@ -115,8 +118,8 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              title: Text('Album'),
-              leading: Icon(Icons.photo_album),
+              title: const Text('Album'),
+              leading: const Icon(Icons.photo_album),
               onTap: () {
                 setState(() {
                   _currentIndex = 1;

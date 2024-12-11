@@ -1,10 +1,7 @@
-import 'dart:io';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:pochi/main.dart';
-import 'package:path/path.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -16,29 +13,49 @@ class CameraScreen extends StatefulWidget {
 class _CameraScreenState extends State<CameraScreen> {
   late final CameraController _controller;
 
+  Future<void> _uploadImage() async {
+    try {
+      final xFileImage = await _controller.takePicture();
+      final req = http.MultipartRequest(
+        "POST",
+        Uri.parse(
+            'https://pochi-upload.onrender.com/upload/${supabase.auth.currentUser!.id}'),
+      );
+      req.files.add(
+        await http.MultipartFile.fromPath(
+          "image",
+          xFileImage.path,
+        ),
+      );
+      final res = await req.send();
+      print(res.statusCode);
+    } on CameraException catch (e) {
+      print(e);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
 
-    () async {
-      _controller = CameraController(
-        cameras.first,
-        ResolutionPreset.medium,
-      );
-      try {
-        await _controller.initialize();
-      } on CameraException catch (e) {
-        switch (e.code) {
+    _controller = CameraController(
+      cameras.first,
+      ResolutionPreset.medium,
+    );
+    _controller.initialize().onError<CameraException>(
+      (error, stackTrace) {
+        switch (error.code) {
           case 'CameraAccessDenied':
-            print(e.description);
+            print(error.description);
             break;
           default:
             break;
         }
-      }
+      },
+    ).then((_) {
       if (!mounted) return;
       setState(() {});
-    }();
+    });
   }
 
   @override
@@ -51,44 +68,19 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Stack(
-          children: [
-            _controller.value.isInitialized
-                ? CameraPreview(_controller)
-                : const CircularProgressIndicator(),
-            IconButton.filled(
-              onPressed: () async {
-                final xFileImage = await _controller.takePicture();
-                final image = File(xFileImage.path);
-                if (!context.mounted) return;
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    content: Image.file(image),
-                    actions: [
-                      TextButton(
-                        onPressed: () async {
-                          final images = supabase.storage.from('images');
-                          final id = supabase.auth.currentUser!.id;
-                          final fileName = basenameWithoutExtension(image.path);
-                          try {
-                            await images.upload('$id/$fileName', image);
-                          } on StorageException catch (e) {
-                            print(e.message);
-                          } finally {
-                            if (context.mounted) Navigator.pop(context);
-                          }
-                        },
-                        child: const Text('Save'),
-                      ),
-                    ],
+          alignment: Alignment.bottomCenter,
+          children: _controller.value.isInitialized
+              ? [
+                  CameraPreview(_controller),
+                  IconButton.filled(
+                    onPressed: _uploadImage,
+                    icon: const Icon(Icons.circle),
                   ),
-                );
-              },
-              icon: const Icon(Icons.circle),
-            ),
-          ],
+                ]
+              : [const CircularProgressIndicator()],
         ),
       ),
     );
